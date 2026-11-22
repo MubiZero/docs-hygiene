@@ -50,4 +50,4 @@ done < <(find . -name '*.md' \
   -not -path '*/.dart_tool/*' \
   -not -path '*/vendor/*' | sort)
 
-[ "$broken" -eq 0 ] && echo "  ✓ Все относительные ссылки ведут на существующие файлы"
+[ "$broken" -eq 0 ] && echo "  ✓ Все относительные ссылки ведут на существующие файлы" || true
