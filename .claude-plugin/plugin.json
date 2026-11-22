@@ -1,7 +1,7 @@
 {
   "name": "docs-hygiene",
   "displayName": "Docs Hygiene",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Проверяет документацию проекта (README, docs/, CLAUDE.md, AGENTS.md, decisions/) на расхождение с кодом и памятью: протухшее, брошенное, задвоенное, недостающее, раздутое. По умолчанию только отчёт; правит только по команде.",
   "author": {
     "name": "MubiZero",

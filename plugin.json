@@ -1,0 +1,17 @@
+{
+  "name": "docs-hygiene",
+  "displayName": "Docs Hygiene",
+  "version": "1.1.0",
+  "description": "Проверяет документацию проекта (README, docs/, CLAUDE.md, AGENTS.md, GEMINI.md, decisions/) против реального кода: протухшее, брошенное, задвоенное, недостающее, раздутое.",
+  "author": {
+    "name": "MubiZero",
+    "url": "https://github.com/MubiZero"
+  },
+  "homepage": "https://github.com/MubiZero/docs-hygiene",
+  "repository": "https://github.com/MubiZero/docs-hygiene",
+  "suggestedPrompts": [
+    "Проведи аудит документации проекта по 5 классам docs-hygiene (только отчёт)",
+    "Найди задвоенные и протухшие факты между README, docs/ и правилами агентов",
+    "Прогони doc_audit.sh и покажи битые ссылки и раздутые документы"
+  ]
+}

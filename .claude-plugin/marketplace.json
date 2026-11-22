@@ -13,7 +13,7 @@
       "name": "docs-hygiene",
       "source": ".",
       "description": "Аудит документации на расхождение с кодом: протухшее, брошенное, задвоенное, недостающее, раздутое. Read-only по умолчанию.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "license": "MIT",
       "homepage": "https://github.com/MubiZero/docs-hygiene",
       "category": "productivity",
