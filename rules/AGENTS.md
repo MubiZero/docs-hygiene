@@ -1,5 +1,5 @@
-# Непрерывная гигиена документации (Route, Don't Replicate)
+# Continuous Documentation Hygiene (Route, Don't Replicate)
 
-1. **Маршрутизатор, не простыня:** корневой `AGENTS.md` (до 150 строк) держит команды и таблицу «Тема → Файл в `docs/`»; `CLAUDE.md` — симлинк на `AGENTS.md`.
-2. **Карта связей (MOC):** хаб `docs/README.md` связывает `Модуль кода ↔ Документ ↔ Решение (ADR)`. Никаких файлов-сирот в `docs/` без входящей ссылки из хаба и шапки `> **Код:** path/to/module`.
-3. **Правка кода = синхронная правка дока** (`docs/api.md`, `docs/deploy.md`, `docs/status.md`, `AGENTS.md`) в том же коммите. Один факт живёт в одном месте.
+1. **Router, not a wall of text:** root `AGENTS.md` (≤150 lines) holds build/test commands and a routing table (`Topic → File in docs/`); `CLAUDE.md` is a symlink to `AGENTS.md`.
+2. **Map of Content (MOC):** hub `docs/README.md` links `Code Module ↔ Document ↔ Decision (ADR)`. Never leave orphan files in `docs/` without an inbound link from the hub and a header `> **Code:** path/to/module`.
+3. **Code edit = synchronous doc edit** (`docs/api.md`, `docs/deploy.md`, `docs/status.md`, `AGENTS.md`) in the same commit. One fact lives in one place.

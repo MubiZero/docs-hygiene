@@ -1,74 +1,63 @@
 ---
 name: docs-hygiene
 description: >-
-  Аудит документации (README, docs/, AGENTS.md, CLAUDE.md, ADR) против кода и сборка карты связей (Map of Content:
-  модуль ↔ док ↔ решение). Ловит 6 классов: протухшее, брошенное, задвоенное, недостающее, раздутое, доки-сироты.
-  Применяй на: «доки протухли», «аудит доков», «почисти документацию», «составь карту проекта / доков», «опись проекта»;
+  Audits project docs (README, docs/, AGENTS.md, CLAUDE.md, ADR) against real code and builds a Map of Content
+  (Code Module ↔ Doc ↔ ADR). Catches 6 classes: stale, abandoned, duplicated, missing, bloated, and orphan docs.
+  Use on: "доки протухли", "аудит доков", "почисти документацию", "составь карту проекта / доков", "опись проекта",
   docs audit, project map, map of content, documentation drift.
 ---
 
-# docs-hygiene 2.0: граф связей и доки, которым можно верить
+# docs-hygiene 2.0: Knowledge Graph & Trustworthy Docs
 
-Доки гниют по трём причинам: код уехал вперёд документа, один и тот же факт размазан по трём файлам, либо документы лежат свалкой сирот (orphans), на которые не ведёт ни одна точка входа (`AGENTS.md` или хаб `docs/README.md`).
+Docs rot for three reasons: code moves ahead of the doc, one fact is duplicated across three files, or docs sit as disconnected orphans with no inbound links from entrypoints (`AGENTS.md` or hub `docs/README.md`).
 
-Этот плагин работает в двух режимах:
-1. **Непрерывная гигиена (всегда включена через `rules/AGENTS.md` плагина):** принцип *Route, Don't Replicate* (`AGENTS.md` ≤150 строк как таблица маршрутов, один симлинк `CLAUDE.md -> AGENTS.md`, хаб `docs/README.md` как Map of Content, синхронное обновление дока в одном коммите с кодом и запрет на создание доков-сирот). Подробно — [references/blueprint.md](references/blueprint.md) и готовые шаблоны в [templates/](templates/).
-2. **Аудит и сборка карты связей (по вызову скилла):** находит 6 классов проблем и строит граф `Модуль кода ↔ Документ ↔ Решение (ADR)`.
+This plugin operates in two modes:
+1. **Continuous hygiene (always active via plugin `rules/AGENTS.md`):** *Route, Don't Replicate* (`AGENTS.md` ≤150 lines as a routing table, `CLAUDE.md -> AGENTS.md` symlink, `docs/README.md` as Map of Content, synchronous doc updates in the same commit as code changes, zero orphan docs). See [references/blueprint.md](references/blueprint.md) and [templates/](templates/).
+2. **Audit & Map of Content builder (on skill activation):** detects 6 defect classes and maps `Code Module ↔ Document ↔ Decision (ADR)`.
 
-## Шесть классов находок
+## Six Finding Classes
 
-Подробно, с признаком и лечением каждого — [references/classes.md](references/classes.md).
+Full details and remedies: [references/classes.md](references/classes.md).
 
-| # | Класс | Вопрос |
+| # | Class | Question |
 |---|---|---|
-| 1 | **Протухшее** | Код изменился, а предложение о нём — нет? (или код в теге `Код:` новее документа) |
-| 2 | **Брошенное** | Документ описывает то, чего в коде больше нет? |
-| 3 | **Задвоенное** | Один факт пересказан в двух и более местах (в т.ч. разные `CLAUDE.md` и `AGENTS.md`)? |
-| 4 | **Недостающее** | Есть модуль или решение, где по правилам проекта должен быть документ/ADR, а его нет? |
-| 5 | **Раздутое** | Факт верный, но документ такой длины и формы (`AGENTS.md` >150 строк, док >250 строк без оглавления), что его не читают? |
-| 6 | **Несвязанное (Сироты / Orphans)** | В `docs/` лежит файл, на который нет ни одной входящей ссылки из `docs/README.md` или `AGENTS.md`, либо в проекте вообще нет хаба-карты? |
+| 1 | **Stale (Протухшее)** | Did code change while the sentence about it stayed behind (or `Code:` tag paths are newer than the doc)? |
+| 2 | **Abandoned (Брошенное)** | Does the document describe a module, feature, or flow that no longer exists in code? |
+| 3 | **Duplicated (Задвоенное)** | Is the same fact restated in 2+ places (including diverging `CLAUDE.md` and `AGENTS.md`)? |
+| 4 | **Missing (Недостающее)** | Does a module or architectural choice lack a required doc or ADR per project conventions? |
+| 5 | **Bloated (Раздутое)** | Is the doc accurate but too long/unstructured (`AGENTS.md` >150 lines, doc >250 lines without TOC)? |
+| 6 | **Orphan / Unlinked (Сироты)** | Does a file in `docs/` have zero inbound links from `docs/README.md` or `AGENTS.md`, or is the MOC hub missing? |
 
-## Порядок работы
+## Workflow
 
-1. **Авторазведка и срез графа.** Запусти оба скрипта на корне проекта:
-   - `bash <skill>/scripts/doc_audit.sh <корень-проекта>` — инвентаризация, битые ссылки, список документов-сирот (orphans), проверка пары `AGENTS.md`/`CLAUDE.md` и детектор дрейфа `Код новее документа` (по шапке `**Код:** \`path\``).
-   - `bash <skill>/scripts/doc_map.sh <корень-проекта>` — автосрез модулей кода (Go/Flutter), документов и ADR для построения `docs/README.md` (Map of Content).
-2. **Для каждого документа — что он доказывает.** Путь к коду, команда, число, дата. Утверждение
-   без способа проверить — кандидат на «раздутое» или «протухшее», разбирайся отдельно.
-3. **Аудит, не правка.** Результат разведки — отчёт по форме ниже. Ничего не переписывай на этом
-   шаге, даже если очевидно как. Протокол проверки — [references/protocol.md](references/protocol.md).
-4. **Правка и сборка карты — по команде, класс за классом.** Когда владелец одобрил наведение порядка:
-   - собери или обнови хаб `docs/README.md` по шаблону [templates/DOCS-MOC.md](templates/DOCS-MOC.md);
-   - облегчи корневой `AGENTS.md` до таблицы маршрутизации по [templates/AGENTS-TEMPLATE.md](templates/AGENTS-TEMPLATE.md) (и свяжи `CLAUDE.md -> AGENTS.md`);
-   - при необходимости заведи [templates/STATUS-TEMPLATE.md](templates/STATUS-TEMPLATE.md) и [templates/ADR-TEMPLATE.md](templates/ADR-TEMPLATE.md).
+1. **Automated Recon & Graph Slice.** Run both helper scripts on the project root:
+   - `bash <skill>/scripts/doc_audit.sh <project-root>` — inventory, broken links, orphan docs, `AGENTS.md`/`CLAUDE.md` divergence, and `Code newer than doc` drift (via `**Code:**` / `**Код:**` header tags).
+   - `bash <skill>/scripts/doc_map.sh <project-root>` — discovers Go/Flutter code modules, docs, and ADRs to build `docs/README.md` (Map of Content).
+2. **Verify Claims Against Code.** Check paths, commands, versions, and dates. Unverifiable claims are candidates for Bloated or Stale.
+3. **Audit First, Never Edit Silently.** Output the report in Russian using the format below ([references/protocol.md](references/protocol.md)).
+4. **Fix & Map by Class on Command.** Once approved by the owner:
+   - Build or update hub `docs/README.md` from [templates/DOCS-MOC.md](templates/DOCS-MOC.md);
+   - Trim root `AGENTS.md` into a routing table via [templates/AGENTS-TEMPLATE.md](templates/AGENTS-TEMPLATE.md) (and symlink `CLAUDE.md -> AGENTS.md`);
+   - Add [templates/STATUS-TEMPLATE.md](templates/STATUS-TEMPLATE.md) and [templates/ADR-TEMPLATE.md](templates/ADR-TEMPLATE.md) as needed.
 
-## Форма отчёта
+## Report Format (Reply to Owner in Russian)
 
 ```
-**Документы:** <список источников правды, которые разведаны>.
-**Протухшее:** N. <Что документ утверждает> → <что в коде сейчас, с датой/коммитом>.
-**Брошенное:** N. <Документ> описывает <что>, этого нет в коде с <коммит/дата>.
-**Задвоено:** N. <Факт> живёт в <файл A> и <файл B> — расходятся в <чём>, если расходятся.
-**Недостающее:** N. <Место>, где по правилу проекта нужен документ, а его нет.
-**Раздутое:** N. <Документ>, <M> строк, без которых можно обойтись (или: без оглавления/якорей).
-**Несвязанное (Сироты и карта):** N. <Документ-сирота без входящей ссылки из docs/README.md или отсутствие самого хаба-карты>.
-**Что чисто:** <коротко, не только находки>.
-**Рекомендация:** какие классы чинить первыми (обычно: задвоенное и протухшее — они лгут
-активно; раздутое — в последнюю очередь, это не ошибка, а неудобство).
+**Документы:** <checked truth sources>.
+**Протухшее:** N. <Doc claim> → <actual code state, with commit/date>.
+**Брошенное:** N. <Doc> describes <X>, removed in <commit/date>.
+**Задвоено:** N. <Fact> lives in <file A> and <file B> (diverges on <what>).
+**Недостающее:** N. <Module/decision> missing required doc/ADR.
+**Раздутое:** N. <Doc>, <M> lines that can be trimmed/routed.
+**Несвязанное (Сироты и карта):** N. <Orphan doc without inbound link from docs/README.md or missing MOC hub>.
+**Что чисто:** <briefly what is accurate and well-linked>.
+**Рекомендация:** priority order to fix (usually Duplicated, Stale, and Orphans first; Bloated last).
 ```
 
-## Границы
+## Boundaries
 
-- **Не редактируй без команды.** Отчёт — финал аудита. «Почистить доки» в одном сообщении не
-  значит «перепиши их все»: подтверди объём, если не очевиден из запроса.
-- **Защищённые файлы.** Юридические, лицензионные и файлы с внешним форматом (CHANGELOG по
-  conventional-commits, файлы, которые генерирует другой инструмент) — не трогай даже в режиме
-  правки, назови отдельно.
-- **Осознанная краткость — не находка.** Короткий README с явной ссылкой «подробности — там-то» —
-  не раздутое и не недостающее. Находка — это разрыв, который кого-то обманет или заставит
-  читать то же самое дважды, а не любое несовершенство по вкусу.
-- **Если доступен скилл `runway`** и проект в режиме релиза — пункт G11 (документы для пилота)
-  закрывается этим аудитом; не дублируй, ссылайся.
-- **Если находки похожи на то, что лежит в памяти проекта** (протухший факт, который память
-  тоже помнит неверно) — скажи об этом отдельной строкой и предложи прогнать `consolidate-memory`:
-  этот скилл чистит документы в репозитории, тот — файлы памяти, у них разная зона.
+- **Read-only by default.** An audit request ends with the report; wait for explicit owner approval before editing.
+- **Protected files.** Never touch licenses, external-format files, or generated changelogs/API specs (fix the generator source instead).
+- **Intentional brevity is not a defect.** A short README pointing to `docs/README.md` is healthy routing.
+- **Runway integration:** satisfies `runway` gate G11 (pilot documentation).
+- **Project memory drift:** if stale repo docs match stale agent memory, suggest running `consolidate-memory`.

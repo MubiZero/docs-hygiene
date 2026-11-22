@@ -1,26 +1,24 @@
-# Эталонная архитектура документации («Граф связей», как в Obsidian MOC)
+# Blueprint: Connected Documentation Graph (Obsidian-Style MOC)
 
-Главная ошибка проектной документации — либо **свалка несвязанных `.md`-файлов**, про которые агент не знает, либо **один раздутый `CLAUDE.md` на 1000 строк**, который съедает контекст и снижает точность модели на 20–25%.
+The two classic documentation failures are **an unlinked dump of `.md` files** that agents never find, or **a 1,000-line `CLAUDE.md`** that pollutes context on every turn.
 
-Правильная архитектура строится по принципу **Route, Don't Replicate** (маршрутизируй, а не пересказывай) из четырёх узлов, связанных двусторонними ссылками:
+Follow **Route, Don't Replicate** using a four-layer directed graph:
 
 ```
-AGENTS.md (корень, ≤150 строк: команды + таблица маршрутов «Тема → Док»)
+AGENTS.md (root, ≤150 lines: commands + routing table "Topic → Doc", with CLAUDE.md symlinked to it)
    │
    ▼
-docs/README.md (Хаб / Map of Content: все живые доки + граф «Модуль кода ↔ Док ↔ ADR»)
-   ├──► docs/status.md (пульс проекта: что на проде, что в сторах, что открыто, что ждёт владельца)
-   ├──► docs/<topic>.md (тематический док, в шапке: «Код: path/to/pkg · Решения: ADR-0002»)
-   └──► docs/decisions/NNNN-slug.md (ADR: Статус, Дата, Область действия, Затрагивает код, Пересмотр)
+docs/README.md (Hub / Map of Content: all live docs + "Code Module ↔ Doc ↔ ADR" matrix)
+   ├──► docs/status.md (live project pulse: prod versions, store review status, open work, owner blockers)
+   ├──► docs/<topic>.md (topic guide, header: "> **Code:** path/to/pkg · **ADR:** 0002")
+   └──► docs/decisions/NNNN-slug.md (ADR: Status, Date, Scope, Code paths, Revisit trigger)
 ```
 
----
+## Four Graph Invariants
 
-## 1. Четыре обязательных свойства графа
-
-1. **Ни одного сироты (Zero Orphans).** Каждый файл в `docs/*.md` имеет входящую ссылку из `docs/README.md` (или `AGENTS.md`), а каждый `docs/decisions/NNNN-*.md` — из `docs/decisions/README.md`. Файл без входящей ссылки агент никогда не откроет по маршруту.
-2. **Явная привязка «Док → Код» (Blast Radius).** В шапке каждого тематического документа и ADR первой строкой после заголовка стоят пути к коду, за которые он отвечает:
-   `> **Код:** imon-api/internal/crm, docker/public-edge.conf.template · **Решения:** [0002](decisions/0002-light-web.md)`
-   Благодаря этому `doc_audit.sh` проверяет по `git log`, не менялся ли код модуля *после* последнего обновления документа.
-3. **Разделение «Живое» vs «История».** Разовые аудиты, старые планы и симуляции либо убираются в историю git (с записью в разделе «История» `docs/README.md`, как их достать через `git log -- <путь>`), либо явно помечаются как исторические, чтобы агент не принимал прошлый аудит за текущее состояние.
-4. **Единство `AGENTS.md` и `CLAUDE.md`.** Канонический файл — `AGENTS.md`, а `CLAUDE.md` — симлинк на него (`ln -s AGENTS.md CLAUDE.md`), чтобы и Claude Code, и Antigravity, и Codex читали один и тот же маршрут.
+1. **Zero Orphans:** Every file in `docs/*.md` has an inbound link from `docs/README.md` (or `AGENTS.md`), and every `docs/decisions/NNNN-*.md` is listed in `docs/decisions/README.md`.
+2. **Explicit Code Binding (`Code:` / `Код:` header):** The first blockquote line after `# Title` names the code paths the document governs:
+   `> **Code:** imon-api/internal/crm, docker/public-edge.conf.template`
+   `doc_audit.sh` uses these paths to compare `git log` timestamps and flag when code moves ahead of its doc.
+3. **Live vs History Separation:** One-off audits, completed migration plans, and role simulation logs are either removed from the working tree (referenced in `docs/README.md` under "History" via `git log --all -- <path>`) or clearly marked historical so agents never mistake an old audit for current state.
+4. **Single Agent Entrypoint:** `AGENTS.md` is canonical; `CLAUDE.md` is a symlink (`ln -s AGENTS.md CLAUDE.md`).

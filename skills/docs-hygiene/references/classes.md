@@ -1,105 +1,35 @@
-# Пять классов — признак, цена, как искать, лечение
+# Six Finding Classes — Symptoms, Cost, Detection, Remedy
 
-## 1. Протухшее
+## 1. Stale (Протухшее)
+- **Symptom:** Doc describes a path, CLI flag, API, default value, or version that code has since changed.
+- **Cost:** Worse than no doc—it lies confidently and misleads humans and agents.
+- **Detection:** `rg` literal file/function names from the doc; test commands; compare `git log` dates of the doc vs the code module listed in `> **Code:** path/to/pkg` (`doc_audit.sh` Section 4).
+- **Remedy:** Update the fact in place if the doc is still relevant; if the entire doc was superseded, move to Abandoned and delete/archive.
 
-**Признак.** Документ описывает поведение, путь, команду, API или цифру, которые код с тех пор
-поменял. Самый частый источник: переименование файла/функции, смена флага CLI, изменение
-значения по умолчанию, обновлённая версия зависимости, перенесённая команда сборки.
+## 2. Abandoned (Брошенное)
+- **Symptom:** The entire subject of the document (module, service, feature flag, workflow) was deleted from code.
+- **Cost:** Wastes reader and agent tokens planning around non-existent architecture.
+- **Detection:** `git log --follow` on the deleted module; zero occurrences in the source tree.
+- **Remedy:** Delete from the working tree (git history preserves it, note in `docs/README.md` under "History") or mark explicitly as historical ADR. Ask the owner before deleting recent or externally linked docs.
 
-**Цена.** Хуже отсутствия документа: отсутствие явно просит спросить, протухшее — лжёт
-уверенно. Человек или агент следует ему и либо не находит путь, либо получает не то, что
-обещано.
+## 3. Duplicated (Задвоенное)
+- **Symptom:** The same rule, command, or number is restated in 2+ files in different words (e.g., separate hand-edited `CLAUDE.md` and `AGENTS.md`, or README vs `docs/`).
+- **Cost:** Inevitably diverges when one copy is updated and the other is forgotten.
+- **Detection:** Compare overlapping docs (`AGENTS.md` vs `CLAUDE.md`, `README.md` vs `docs/deploy.md`).
+- **Remedy:** Pick one canonical home (closest to the code) and replace duplicates with a 1-line link (*Route, Don't Replicate*). Make `CLAUDE.md` a symlink to `AGENTS.md`.
 
-**Как искать.**
-- Пути и имена файлов/функций, упомянутые в доке — существуют ли ещё (`rg` по буквальной
-  строке, не по смыслу).
-- Команды в доке (`npm run`, `go build`, скрипт по пути) — запускаются ли без правки.
-- Числа и версии (версия рантайма, порт, таймаут) — совпадают ли с конфигом/кодом.
-- `git log` по файлу-источнику: менялся ли он после последнего изменения дока на ту же тему.
-  Дата дока старше даты последнего релевантного коммита — кандидат, не автоматический вердикт:
-  подтверди по содержимому, не только по дате.
+## 4. Missing (Недостающее)
+- **Symptom:** Project conventions require a doc or ADR (e.g., new service, major architectural decision, production runbook), or `doc_map.sh` shows a core code module with no linked doc in `docs/README.md`.
+- **Cost:** Decisions without an ADR get accidentally reversed by future sessions (`honesty.md` rule 1).
+- **Remedy:** Flag the missing doc/ADR to the owner and offer a draft from `templates/ADR-TEMPLATE.md`. Never fabricate rationale for a decision you didn't witness.
 
-**Лечение.** Поправить факт на месте, если документ в целом живой. Документ целиком устарел и
-заменён другим — перевести в «брошенное» и удалить/заархивировать, не чинить построчно.
+## 5. Bloated (Раздутое)
+- **Symptom:** Factually accurate, but so long or unstructured (`AGENTS.md` >150 lines, doc >250 lines without headings/TOC, rare edge cases mixed into the happy path) that nobody reads it and agent context gets polluted.
+- **Cost:** Bloated always-on instruction files degrade agent accuracy by 20–25% and burn tokens on every turn.
+- **Remedy:** Extract topic details into `docs/<topic>.md`, keep `AGENTS.md` as a compact routing table, add a TOC, and delete facts trivially readable from type signatures.
 
-## 2. Брошенное
-
-**Признак.** Документ целиком описывает функцию, модуль, флаг или процесс, которого в коде
-больше нет — не одна деталь протухла, а весь предмет документа исчез.
-
-**Цена.** Человек тратит время на чтение и планирование вокруг того, чего нет; новый участник
-командны строит модель продукта по несуществующей части.
-
-**Как искать.** Заголовок/тема документа — есть ли в коде то, о чём он; `git log --follow` по
-файлу источника, если он был удалён — коммит удаления есть, а документ остался. Документ
-ссылается на декларацию/модуль, которого больше нет в дереве.
-
-**Лечение.** Удалить или явно пометить «исторический» с датой и причиной, если ценность в
-истории решения (это не брошенное, а архив — см. `decisions/`, если в проекте такой есть).
-Молча не удаляй без подтверждения владельца, если документ недавний или на него есть ссылки
-извне (README других проектов, публичная вики).
-
-## 3. Задвоенное
-
-**Признак.** Один факт, правило или число пересказаны в двух и более документах своими
-словами. Пока оба автора синхронны — незаметно; расхождение всплывает, когда один из двух
-источников поправили, а про второй забыли (это ровно то, что уже случилось между runway и
-three-pass-audit в этом наборе скиллов — реальный, не гипотетический случай).
-
-**Цена.** Не просто лишняя работа читать дважды — риск, что поправят только одну копию и
-дальше два источника противоречат друг другу, и непонятно, какому верить.
-
-**Как искать.** Сравни документы, которые покрывают смежные темы (архитектура и README,
-процесс релиза и онбординг), построчно на предмет одного и того же факта в разных словах. Не
-только буквальные совпадения — перефразированный дубль опаснее, его сложнее найти diff'ом.
-
-**Лечение.** Выбери канонический источник (обычно тот, что ближе к коду или обновляется чаще),
-остальные — короткой ссылкой на него, не копией. Если оба документа меняются по разным
-причинам (один для людей снаружи, другой для разработчиков) — задвоение может быть осознанным;
-тогда не находка, а решение, которое стоит явно назвать в обоих файлах («подробности: такой-то
-документ»), чтобы читатель знал, где искать актуальное.
-
-## 4. Недостающее
-
-**Признак.** Правило проекта или повторяющийся паттерн требует документа определённого вида
-(ADR при архитектурном решении, README при новом сервисе, запись в CHANGELOG при релизе), а
-его для конкретного случая нет.
-
-**Цена.** Решение без следа: следующий человек не знает, что оно было принято осознанно, и
-рискует развернуть его — ровно сценарий `honesty.md` правила 1 из runway, только о документации,
-а не о коде.
-
-**Как искать.** Найди конвенцию проекта (есть ли `decisions/`, `CONTRIBUTING.md` с требованием
-писать ADR) и сопоставь со списком реальных решений/сервисов/релизов за период — у скольких
-нет соответствующего документа.
-
-**Лечение.** Не пиши документ сам за решение, которое не описывал — это подмена авторства.
-Назови владельцу: какое решение не задокументировано, кто его помнит, предложи шаблон.
-
-## 5. Раздутое
-
-**Признак.** Документ фактически верен, но такого объёма, структуры или стиля, что его не
-читают: простыня без оглавления, повтор одного и того же в разных разделах другими словами,
-сведения, нужные одному читателю из ста, смешаны с тем, что нужно всем (особенно `AGENTS.md` / `CLAUDE.md` длиннее 150–200 строк).
-
-**Цена.** Раздутый документ хуже отсутствующего не фактически, а по поведению: его открывают,
-не находят нужное за разумное время и закрывают, так и не узнав верный факт, который там был. У ИИ-агентов раздутый `AGENTS.md` съедает окно контекста на каждом ходе и снижает точность следования ключевым правилам.
-
-**Как искать.** Длина без оглавления/якорей на длинный документ; повтор одного факта в разных
-формулировках внутри одного файла (не между файлами — это класс 3); доля контента, которая
-отвечает на вопрос «как устроено по умолчанию», против доли про «что делать в редком случае X» —
-если второе больше первого, читатель тонет раньше, чем доходит до типового пути.
-
-**Лечение.** Не новый текст, а структура (*Route, Don't Replicate*): вынеси тематические подробности в `docs/<topic>.md`, а в `AGENTS.md` оставь короткую таблицу маршрутизации. Удалить то, что уже и так выводимо из кода
-(список параметров функции, если у неё есть сигнатура с типами) — такое протухает первым и
-никого не ориентирует лучше самого кода.
-
-## 6. Несвязанное (Сироты / Orphans и отсутствие карты связей)
-
-**Признак.** Документ физически лежит в `docs/` или подпапке проекта, но на него не ведёт ни одна ссылка из точек входа (`AGENTS.md`, `README.md`, хаба `docs/README.md`), либо в самом документе не указано, к какому модулю кода и каким ADR он относится. Сюда же относится отсутствие в проекте единой карты `docs/README.md` (Map of Content).
-
-**Цена.** Агент или разработчик, идущий по маршруту от корня репозитория, никогда не узнает о существовании этого файла: либо напишет второй такой же документ рядом (породив класс 3 «Задвоенное»), либо нарушит описанный там инвариант при правке кода.
-
-**Как искать.** Запустить `bash scripts/doc_audit.sh <корень>` (раздел 3 «Граф связей и документы-сироты»): скрипт строит ориентированный граф всех markdown-ссылок репозитория и выводит файлы с нулевой полустепенью захода (`in-degree = 0`).
-
-**Лечение.** Собрать или обновить хаб `docs/README.md` по шаблону `templates/DOCS-MOC.md` (таблица `Модуль кода ↔ Документ ↔ Решения (ADR)`), связать каждый живой документ с его модулем кода (шапка `> **Код:** \`path/to/pkg\``), а устаревшие разовые разборы перенести в раздел «История» или удалить в историю git.
+## 6. Orphan / Unlinked (Несвязанное / Сироты)
+- **Symptom:** A `.md` file sits in `docs/` with zero inbound links from `docs/README.md` or `AGENTS.md`, or lacks a `> **Code:**` header tying it to code modules.
+- **Cost:** Agents traversing from the repo root never discover the file, leading to duplicate docs or broken invariants.
+- **Detection:** Run `bash scripts/doc_audit.sh <root>` (Section 3 computes the markdown link graph and lists zero-indegree nodes).
+- **Remedy:** Connect every live doc into `docs/README.md` (`templates/DOCS-MOC.md`) with its code module and ADR links, and archive dead audit dumps.
